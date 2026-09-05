@@ -1,0 +1,112 @@
+# Rules for agents that handle incoming reports during a disaster or crisis.
+#
+# The threat model here is not "the model says something embarrassing". It is
+# that a coordination product built from crowd-sourced reports can direct
+# responders to the wrong place, or can tell an armed group exactly where
+# displaced people are sheltering. Precision is a hazard, not a feature.
+
+id: humanitarian-response
+version: 1.0.0
+title: Humanitarian Response Information Handling
+description: >
+  Verification thresholds, location coarsening and protection controls for
+  agents that triage crowd-sourced crisis reports into coordination products.
+
+authority:
+  - framework: OCHA Humanitarian Principles
+    reference: "Humanity, neutrality, impartiality, independence"
+    requirement: Information products serve affected people and do no harm.
+  - framework: Sphere Handbook (2018)
+    reference: "Core Humanitarian Standard, Commitment 4"
+    requirement: Communities receive timely, accurate information they can act on.
+  - framework: ICRC Handbook on Data Protection in Humanitarian Action
+    reference: "Chapter 4 - Data security and processing"
+    requirement: Location and identity data are protected against misuse.
+  - framework: UNESCO Recommendation on the Ethics of Artificial Intelligence (2021)
+    reference: "Safety and security"
+    requirement: Unwanted harms and vulnerabilities to attack are avoided.
+
+defaults:
+  effect: deny
+  risk: 15
+
+rules:
+  - id: coarsen-locations-everywhere
+    description: Reduce coordinates to roughly one kilometre before they reach a model or a reader.
+    when:
+      kind: [publish, model.complete, message.send]
+    effect: transform
+    risk: 0
+    controls: [ICRC-DP-CH4, CIVICOS-GEO-01]
+    obligations:
+      - type: coarsen_geo
+        fields: [payload.text, payload.prompt]
+        precision: 2
+
+  - id: minimise-identifiers-before-publication
+    description: Strip direct identifiers from coordination products before anyone reads them.
+    when:
+      kind: publish
+    effect: transform
+    risk: 0
+    controls: [ICRC-DP-CH4, GDPR-ART-5-1-C]
+    obligations:
+      - type: redact
+        fields: [payload.text]
+        detectors: [email, phone, payment_card, credential]
+
+  - id: escalate-single-source-reports
+    description: A coordination product resting on fewer than two independent reports needs a duty officer.
+    when:
+      all:
+        - kind: publish
+        - payload.corroboration: { lt: 2 }
+    effect: require_approval
+    risk: 60
+    controls: [SPHERE-CHS-4, CIVICOS-VERIFY-01]
+    approval:
+      role: duty-officer
+      quorum: 1
+      expiresInMs: 1800000
+      reasonCodes: [corroborated, single_source_acceptable, reject, needs_field_check]
+
+  - id: deny-publication-identifying-individuals
+    description: Never publish a product the triage stage flagged as identifying named individuals.
+    when:
+      all:
+        - kind: publish
+        - payload.identifiesIndividuals: true
+    effect: deny
+    risk: 95
+    controls: [ICRC-DP-CH4, OCHA-DO-NO-HARM]
+
+  - id: deny-clinical-advice
+    description: Refuse to publish anything classified as individual clinical or legal advice.
+    when:
+      kind: publish
+      payload.category: [medical_advice, legal_advice]
+    effect: deny
+    risk: 85
+    controls: [CIVICOS-SCOPE-01, UNESCO-AI-ETHICS-PROPORTIONALITY]
+
+  - id: label-situation-reports
+    description: Every situation report states plainly how it was produced and what it is not.
+    when:
+      kind: publish
+      resource: { glob: "public/sitreps/**" }
+    effect: transform
+    risk: 0
+    controls: [SPHERE-CHS-4]
+    obligations:
+      - type: label
+        text: "Machine-assisted situation report. Locations are deliberately imprecise. Not a substitute for verified assessment; do not use for targeting or individual case management."
+      - type: cite
+        fields: [payload.sources]
+
+  - id: allow-triage-bus-messages
+    description: Triage stages may pass structured findings to the next stage.
+    when:
+      kind: message.send
+      resource: { glob: "bus/**" }
+    effect: allow
+    risk: 2

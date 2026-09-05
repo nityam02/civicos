@@ -1,0 +1,60 @@
+name: Bug report
+description: Something does not behave as documented.
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What did you expect, and what happened instead?
+    validations:
+      required: true
+
+  - type: textarea
+    id: repro
+    attributes:
+      label: How to reproduce
+      description: Commands, a failing test, or the smallest policy pack and agent that shows it.
+      render: shell
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - kernel and capabilities
+        - policy engine or policy language
+        - obligations and redaction
+        - approvals and human oversight
+        - audit ledger and transparency
+        - orchestration
+        - CLI or console
+        - reference agents
+        - docs
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: Version or commit
+    validations:
+      required: true
+
+  - type: input
+    id: node
+    attributes:
+      label: Node version
+      description: "`node -v`"
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: security
+    attributes:
+      label: Before you post
+      options:
+        - label: This does not let an agent bypass a control. (If it does, report it privately — see SECURITY.md.)
+          required: true

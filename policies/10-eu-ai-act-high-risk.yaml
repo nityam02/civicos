@@ -1,0 +1,84 @@
+# Controls drawn from the EU Artificial Intelligence Act for systems an operator
+# has classified as high-risk. CivicOS does not decide that classification for
+# you - you declare `riskTier: high` in an agent manifest and these rules follow.
+#
+# This pack is not legal advice and does not make a deployment compliant on its
+# own. It encodes the technical measures a deployer still has to evidence:
+# oversight, logging, transparency and traceability.
+
+id: eu-ai-act-high-risk
+version: 1.0.0
+title: EU AI Act - High-Risk Technical Controls
+description: >
+  Human oversight, record-keeping and transparency obligations applied
+  automatically to any agent that declares the high risk tier.
+
+authority:
+  - framework: EU Artificial Intelligence Act (Regulation 2024/1689)
+    reference: "Article 12 - Record-keeping"
+    requirement: High-risk systems automatically record events over their lifetime.
+  - framework: EU Artificial Intelligence Act (Regulation 2024/1689)
+    reference: "Article 14 - Human oversight"
+    requirement: Natural persons can oversee, intervene in and stop the system.
+  - framework: EU Artificial Intelligence Act (Regulation 2024/1689)
+    reference: "Article 50 - Transparency"
+    requirement: People are informed that they are interacting with AI-generated content.
+  - framework: NIST AI Risk Management Framework 1.0
+    reference: "GOVERN 1.4, MANAGE 4.1"
+    requirement: Risk management and post-deployment monitoring are documented and assigned.
+
+defaults:
+  effect: deny
+  risk: 15
+
+rules:
+  - id: deny-high-risk-without-declared-oversight
+    description: A high-risk agent that has not declared human oversight cannot act at all.
+    when:
+      all:
+        - agent.riskTier: high
+        - agent.humanOversightRequired: false
+    effect: deny
+    risk: 95
+    controls: [EU-AI-ACT-ART-14]
+
+  - id: two-person-rule-for-high-risk-publication
+    description: Publication by a high-risk agent needs two independent reviewers, not one.
+    when:
+      all:
+        - agent.riskTier: high
+        - kind: publish
+    effect: require_approval
+    risk: 40
+    controls: [EU-AI-ACT-ART-14, CIVICOS-OVERSIGHT-02]
+    approval:
+      role: editor
+      quorum: 2
+      expiresInMs: 7200000
+      reasonCodes: [accurate, inaccurate, privacy_risk, harm_risk, out_of_scope]
+
+  - id: transparency-notice-on-generated-content
+    description: Generated content carries a visible notice that a machine produced it.
+    when:
+      kind: publish
+    effect: transform
+    risk: 0
+    controls: [EU-AI-ACT-ART-50]
+    obligations:
+      - type: label
+        text: "AI-generated content. Produced by an automated agent and reviewed by a human editor. Article 50 transparency notice."
+
+  - id: full-traceability-of-model-calls
+    description: Every model call by a high-risk agent is recorded in full and retained.
+    when:
+      all:
+        - agent.riskTier: high
+        - kind: model.complete
+    effect: transform
+    risk: 0
+    controls: [EU-AI-ACT-ART-12, NIST-AI-RMF-MEASURE-2.8]
+    obligations:
+      - type: log
+        level: full
+      - type: retain
+        days: 730

@@ -1,0 +1,48 @@
+name: Policy pack proposal
+description: Propose a policy pack for a domain, or challenge a rule in an existing one.
+labels: [policy-pack, help wanted]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        This is the most valuable kind of contribution to CivicOS and it does not
+        require writing code. If you have run the operation the pack is meant to
+        govern, your judgement is what is missing.
+
+  - type: input
+    id: domain
+    attributes:
+      label: Domain
+      placeholder: "Legal aid casework / municipal permitting / community health outreach"
+    validations:
+      required: true
+
+  - type: textarea
+    id: harm
+    attributes:
+      label: What can go wrong in this domain
+      description: The concrete harm, not the abstract risk. Who is hurt, and how?
+    validations:
+      required: true
+
+  - type: textarea
+    id: rules
+    attributes:
+      label: Rules you would want
+      description: In plain language. What must never happen? What always needs a human? What must be removed before anything leaves?
+    validations:
+      required: true
+
+  - type: textarea
+    id: authority
+    attributes:
+      label: Authority
+      description: Standards, regulations, professional guidance or codes of practice these rules would implement.
+    validations:
+      required: true
+
+  - type: textarea
+    id: experience
+    attributes:
+      label: Your experience of this domain
+      description: Optional, and genuinely useful. "I ran an IM cell for three years" changes how we weigh your review.

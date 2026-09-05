@@ -1,0 +1,91 @@
+# Handling rules for documents held by civil-society organisations: case notes,
+# incident reports, funding applications, minutes. These documents are exactly
+# the kind that contain other people's personal data, held by organisations
+# without a data protection office.
+#
+# The design principle is minimisation at the boundary: personal data is removed
+# before text reaches a model, before it reaches an approval queue, and before
+# anything is published - not afterwards.
+
+id: ngo-document-handling
+version: 1.0.0
+title: NGO Document Handling
+description: >
+  Data minimisation and sourcing requirements for agents that read and summarise
+  documents held by non-governmental and civil-society organisations.
+
+authority:
+  - framework: General Data Protection Regulation (EU) 2016/679
+    reference: "Article 5(1)(c) - Data minimisation"
+    requirement: Personal data is adequate, relevant and limited to what is necessary.
+  - framework: UNESCO Recommendation on the Ethics of Artificial Intelligence (2021)
+    reference: "Transparency and explainability"
+    requirement: Outputs are traceable to their sources and contestable.
+  - framework: ICRC Handbook on Data Protection in Humanitarian Action
+    reference: "Chapter 2 - Basic principles of data protection"
+    requirement: Purpose limitation and minimisation apply to humanitarian data processing.
+
+defaults:
+  effect: deny
+  risk: 15
+
+rules:
+  - id: minimise-personal-data-before-model
+    description: Strip direct identifiers from any text an agent handling personal data sends to a model.
+    when:
+      all:
+        - kind: model.complete
+        - agent.dataCategories: { contains: personal_data }
+    effect: transform
+    risk: 0
+    controls: [GDPR-ART-5-1-C, UNESCO-AI-ETHICS-PRIVACY]
+    obligations:
+      - type: redact
+        fields: [payload.prompt]
+        detectors: [email, phone, payment_card, national_id, credential]
+
+  - id: deny-read-outside-corpus
+    description: Reading anything outside the corpus the agent was pointed at is refused.
+    when:
+      all:
+        - kind: data.read
+        - not:
+            resource: { glob: "corpus/**" }
+    effect: deny
+    risk: 75
+    controls: [CIVICOS-DATA-02, GDPR-ART-5-1-B]
+
+  - id: allow-brief-drafting
+    description: Drafts may be written to the agent workspace before review.
+    when:
+      kind: data.write
+      resource: { glob: "workspace/briefs/**" }
+    effect: allow
+    risk: 2
+
+  - id: briefs-must-cite-sources
+    description: A published brief must carry the list of documents it was drawn from.
+    when:
+      kind: publish
+      resource: { glob: "public/briefs/**" }
+    effect: transform
+    risk: 0
+    controls: [UNESCO-AI-ETHICS-TRANSPARENCY]
+    obligations:
+      - type: cite
+        fields: [payload.sources]
+
+  - id: escalate-briefs-mentioning-vulnerable-groups
+    description: A brief the agent has flagged as touching vulnerable people needs a protection reviewer.
+    when:
+      all:
+        - kind: publish
+        - payload.mentionsVulnerableGroups: true
+    effect: require_approval
+    risk: 55
+    controls: [ICRC-DP-CH2, UNESCO-AI-ETHICS-PROPORTIONALITY]
+    approval:
+      role: editor
+      quorum: 2
+      expiresInMs: 7200000
+      reasonCodes: [accurate, privacy_risk, harm_risk, out_of_scope]

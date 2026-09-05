@@ -1,0 +1,12 @@
+{
+  "name": "@civicos/cli",
+  "version": "0.1.0",
+  "description": "civicos - command line interface for the CivicOS agent operating system.",
+  "license": "Apache-2.0",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "bin": { "civicos": "./dist/bin.js" },
+  "files": ["dist", "README.md"],
+  "dependencies": { "@civicos/agents": "0.1.0", "@civicos/core": "0.1.0" }
+}

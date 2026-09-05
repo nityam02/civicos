@@ -1,0 +1,35 @@
+name: Feature or change proposal
+description: Propose a change to CivicOS.
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: The problem
+      description: What is hard or impossible today? Describe the situation, not the solution.
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What you propose
+    validations:
+      required: true
+
+  - type: dropdown
+    id: invariant
+    attributes:
+      label: Does this touch one of the project invariants?
+      description: Fail closed · everything is logged · capabilities precede policy · zero runtime dependencies · obligations are kernel-executed · redaction precedes use
+      options:
+        - "No"
+        - "Yes — and I have thought about what replaces the guarantee"
+        - "Not sure"
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives you considered

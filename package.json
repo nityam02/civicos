@@ -1,0 +1,33 @@
+{
+  "name": "civicos-monorepo",
+  "private": true,
+  "version": "0.1.0",
+  "description": "CivicOS - an operating system for safe, public-interest AI agents.",
+  "license": "Apache-2.0",
+  "type": "module",
+  "engines": {
+    "node": ">=20.11"
+  },
+  "workspaces": [
+    "packages/core",
+    "packages/agents",
+    "packages/cli"
+  ],
+  "scripts": {
+    "build": "tsc -b",
+    "clean": "tsc -b --clean && rm -rf packages/*/dist",
+    "typecheck": "tsc -b --pretty",
+    "test": "npm run build && node --test --test-reporter=spec \"packages/*/dist/**/*.test.js\"",
+    "civicos": "node packages/cli/dist/bin.js",
+    "demo": "npm run build && bash scripts/demo.sh",
+    "demo:ngo": "npm run build && node packages/cli/dist/bin.js run ngo-doc-summarizer --input data/samples/ngo-report.txt",
+    "demo:disaster": "npm run build && node packages/cli/dist/bin.js run disaster-info-coordinator --input data/samples/incoming-reports.jsonl",
+    "audit:verify": "node packages/cli/dist/bin.js audit verify",
+    "console": "npm run build && node packages/cli/dist/bin.js console"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "typescript": "^5.7.2"
+  },
+  "optionalDependencies": {}
+}

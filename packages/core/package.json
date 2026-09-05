@@ -1,0 +1,14 @@
+{
+  "name": "@civicos/core",
+  "version": "0.1.0",
+  "description": "CivicOS kernel: capability-mediated syscalls, policy engine, tamper-evident audit ledger, human approval workflows and multi-agent orchestration.",
+  "license": "Apache-2.0",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": { ".": { "types": "./dist/index.d.ts", "default": "./dist/index.js" } },
+  "files": ["dist", "README.md"],
+  "dependencies": {},
+  "peerDependencies": { "@anthropic-ai/sdk": ">=0.30.0" },
+  "peerDependenciesMeta": { "@anthropic-ai/sdk": { "optional": true } }
+}

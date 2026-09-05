@@ -1,0 +1,144 @@
+# CivicOS baseline safety policy.
+#
+# Loaded by every agent. It is deliberately restrictive: nothing is permitted
+# unless a rule says so, network access is refused outright, and anything that
+# leaves the system needs a named human being to sign it off.
+#
+# Read this file before you read any code. If a reviewer disagrees with a line
+# here, they can change the behaviour of every agent in the deployment without
+# touching TypeScript.
+
+id: baseline
+version: 1.0.0
+title: CivicOS Baseline Safety Policy
+description: >
+  Capability-safe defaults for every agent in the deployment: deny unless
+  permitted, minimise personal data before it reaches a model, refuse outbound
+  network access, and route every publication through human approval.
+
+authority:
+  - framework: UNESCO Recommendation on the Ethics of Artificial Intelligence (2021)
+    reference: "Human oversight and determination"
+    requirement: Meaningful human control is retained over AI systems at all times.
+  - framework: EU Artificial Intelligence Act (Regulation 2024/1689)
+    reference: "Article 14"
+    requirement: High-risk systems are designed so natural persons can effectively oversee them.
+  - framework: EU Artificial Intelligence Act (Regulation 2024/1689)
+    reference: "Article 12"
+    requirement: Automatic recording of events over the lifetime of the system.
+
+defaults:
+  effect: deny
+  risk: 15
+
+rules:
+  - id: allow-model-completion
+    description: Agents may call the configured model, with personal data removed first.
+    when:
+      kind: model.complete
+      resource: { glob: "model/**" }
+    effect: allow
+    risk: 3
+    controls: [CIVICOS-MODEL-01]
+    obligations:
+      - type: redact
+        fields: [payload.prompt, payload.system]
+        detectors: [email, phone, payment_card, credential]
+      - type: log
+        level: full
+
+  - id: allow-corpus-read
+    description: Agents may read documents inside the corpus namespace they were given.
+    when:
+      kind: data.read
+      resource: { glob: "corpus/**" }
+    effect: allow
+    risk: 2
+    controls: [CIVICOS-DATA-01]
+
+  - id: allow-workspace-write
+    description: Agents may write working files into their own workspace.
+    when:
+      kind: data.write
+      resource: { glob: "workspace/**" }
+    effect: allow
+    risk: 2
+
+  - id: allow-internal-message
+    description: Agents may hand structured messages to other agents over the run bus.
+    when:
+      kind: message.send
+      resource: { glob: "bus/**" }
+    effect: allow
+    risk: 2
+
+  - id: deny-outbound-network
+    description: Outbound network access is refused; an agent that can reach any host can leak anything it has read.
+    when:
+      kind: net.fetch
+    effect: deny
+    risk: 70
+    controls: [CIVICOS-NET-01, NIST-AI-RMF-MANAGE-2.2]
+
+  - id: deny-agent-self-spawn
+    description: Only the supervisor composes agents. An agent may not create another agent at run time.
+    when:
+      kind: agent.spawn
+    effect: deny
+    risk: 60
+    controls: [CIVICOS-CAP-02]
+
+  - id: require-approval-before-publication
+    description: Anything that becomes visible outside the system is signed off by a named human first.
+    when:
+      kind: publish
+      resource: { glob: "public/**" }
+    effect: require_approval
+    risk: 30
+    controls: [EU-AI-ACT-ART-14, UNESCO-AI-ETHICS-OVERSIGHT]
+    approval:
+      role: editor
+      quorum: 1
+      expiresInMs: 3600000
+      reasonCodes: [accurate, inaccurate, privacy_risk, harm_risk, out_of_scope]
+    obligations:
+      - type: label
+        text: "Prepared by an AI agent running on CivicOS. Reviewed and approved by a named human before release."
+      - type: cite
+        fields: [payload.sources]
+      - type: retain
+        days: 365
+
+  - id: deny-publication-containing-secrets
+    description: Refuse to publish text that still carries a credential-shaped string after redaction.
+    when:
+      kind: publish
+      payload.text: { regex: "(sk-[A-Za-z0-9_-]{16,}|ghp_[A-Za-z0-9]{20,}|BEGIN [A-Z ]*PRIVATE KEY)" }
+    effect: deny
+    risk: 90
+    controls: [CIVICOS-SEC-01]
+
+  - id: record-keeping-for-high-risk-agents
+    description: High-risk agents get full-fidelity logging and a defined retention period on every action.
+    when:
+      agent.riskTier: high
+    effect: transform
+    risk: 0
+    controls: [EU-AI-ACT-ART-12, NIST-AI-RMF-GOVERN-1.4]
+    obligations:
+      - type: log
+        level: full
+      - type: retain
+        days: 365
+
+  - id: rate-limit-publication
+    description: Cap publications per agent so a malfunctioning run cannot flood a public channel.
+    when:
+      kind: publish
+    effect: transform
+    risk: 0
+    controls: [CIVICOS-AVAIL-01]
+    obligations:
+      - type: rate_limit
+        max: 20
+        windowMs: 3600000

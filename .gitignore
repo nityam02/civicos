@@ -1,0 +1,12 @@
+node_modules/
+dist/
+*.tsbuildinfo
+.civicos/
+out/
+coverage/
+.DS_Store
+.env
+.env.*
+!.env.example
+npm-debug.log*
+.civicos-demo/
