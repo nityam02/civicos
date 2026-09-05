@@ -1,0 +1,84 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: test (node ${{ matrix.node }}, ${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        node: ['20.11', '22', '24']
+        os: [ubuntu-latest]
+        include:
+          - node: '22'
+            os: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+
+      - run: npm ci
+      - run: npm run build
+      - run: node --test --test-reporter=spec "packages/*/dist/**/*.test.js"
+
+  invariants:
+    name: invariants
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+
+      - name: the kernel has no runtime dependencies
+        run: |
+          deps=$(node -p "JSON.stringify(require('./packages/core/package.json').dependencies || {})")
+          echo "core dependencies: $deps"
+          test "$deps" = "{}" || { echo "packages/core must have zero runtime dependencies"; exit 1; }
+
+      - name: every shipped policy pack lints clean
+        run: node packages/cli/dist/bin.js policy lint
+
+      - name: the deployment is coherent
+        run: node packages/cli/dist/bin.js doctor
+
+      - name: every example runs
+        run: |
+          for example in examples/0*/index.mjs; do
+            echo "--- $example"
+            node "$example"
+          done
+
+      - name: the end-to-end demo runs and the ledger verifies
+        run: |
+          bash scripts/demo.sh > /dev/null
+          node packages/cli/dist/bin.js audit verify --state .civicos-demo
+
+      - name: an unattended run never publishes without approval
+        run: |
+          rm -rf .civicos-ci
+          node packages/cli/dist/bin.js run ngo-doc-summarizer \
+            --input data/samples/ngo-report.txt --state .civicos-ci --quiet
+          if [ -d .civicos-ci/out/published ]; then
+            echo "publication happened without an approval"; exit 1
+          fi
+          echo "publication was correctly withheld"
