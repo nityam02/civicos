@@ -26,7 +26,7 @@
     "console": "npm run build && node packages/cli/dist/bin.js console"
   },
   "devDependencies": {
-    "@types/node": "^22.10.2",
+    "@types/node": "^26.6.3",
     "typescript": "^5.7.2"
   },
   "optionalDependencies": {}
